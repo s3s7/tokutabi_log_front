@@ -13,6 +13,8 @@ declare module "next-auth" {
 
   interface User {
     id: string
+    role?: string
+    backendId?: string
   }
 }
 
@@ -21,5 +23,6 @@ declare module "next-auth/jwt" {
     provider?: string
     uid?: string
     role?: string
+    backendId?: string
   }
 }

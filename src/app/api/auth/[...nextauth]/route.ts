@@ -14,6 +14,9 @@ const handler = NextAuth({
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
 		}),
 	],
+	pages: {
+		signIn: '/auth/login',
+	},
 	callbacks: {
 		async signIn({ user, account }) {
 			const provider = account?.provider;
@@ -53,30 +56,30 @@ const handler = NextAuth({
 			// セッションにuser.idとroleを追加
 			if (session.user) {
 				session.user.id = token.sub as string;
-				session.user.role = token.role as string;
+				session.user.role = (token.role as string) || 'general';
 			}
 			return session;
 		},
 		async jwt({ token, account, user }) {
-			// JWTトークンに必要な情報を追加
+			// 初回ログイン時またはトークン更新時
 			if (account && user) {
 				token.provider = account.provider;
 				token.uid = user.id;
 				
-				// バックエンドからユーザー情報（role含む）を取得
+				// バックエンドからユーザー情報を取得してroleを設定
 				try {
 					const response = await axios.get(
-						`${serverApiUrl}/api/v1/users/${user.id}`,
-						{
-							params: {
-								provider: account.provider,
-								uid: user.id
-							}
-						}
+						`${serverApiUrl}/api/v1/users/${account.provider}/${user.id}`
 					);
-					token.role = response.data.role;
+					
+					if (response.data?.user) {
+						token.role = response.data.user.role;
+						token.backendId = response.data.user.id;
+					} else {
+						token.role = 'general';
+					}
 				} catch (error) {
-					console.error('[NextAuth] Failed to fetch user role:', error);
+					console.error('[NextAuth] Failed to fetch user role during JWT callback:', error);
 					token.role = 'general';
 				}
 			}

@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { session, status, isAdmin } = useAuth();
+  const { status, isAdmin } = useAuth();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);

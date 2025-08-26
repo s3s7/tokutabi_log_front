@@ -11,6 +11,7 @@ export const useAuth = () => {
 
   return {
     session,
+    status,
     isAuthenticated,
     isLoading,
     isAdmin,

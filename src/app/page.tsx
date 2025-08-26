@@ -104,9 +104,26 @@
 'use client';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useToastContext } from './context/ToastContext';
 
 export default function Home() {
 	const { status } = useSession();
+	const router = useRouter();
+	const searchParams = useSearchParams();
+	const { showSuccess } = useToastContext();
+
+	useEffect(() => {
+		// ログイン成功後のクエリパラメータをチェック
+		if (searchParams.get('login') === 'success') {
+			showSuccess('ようこそ！ログインしました。', 4000);
+			// URLからクエリパラメータを削除
+			const url = new URL(window.location.href);
+			url.searchParams.delete('login');
+			router.replace(url.pathname, { scroll: false });
+		}
+	}, [searchParams, showSuccess, router]);
 
 	return (
 		<div className="bg-gray-50">
