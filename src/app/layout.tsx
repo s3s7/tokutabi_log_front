@@ -37,13 +37,16 @@
 
 import './globals.css';
 import { Inter } from 'next/font/google';
+import { Metadata } from 'next';
 import NextAuthProvider from '@/providers/NextAuth';
+import Header from './components/Header';
+import Footer from './components/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-	title: 'xxxxxxx',
-	description: 'xxxxxxx',
+	title: 'とくたびログ',
+	description: 'あなたの特別な旅行の思い出を記録しましょう',
 };
 
 export default function RootLayout({
@@ -52,9 +55,24 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="en">
+		<html lang="ja">
+			<head>
+				<link
+					rel="stylesheet"
+					href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+					crossOrigin="anonymous"
+				/>
+			</head>
 			<body className={inter.className}>
-				<NextAuthProvider>{children}</NextAuthProvider>
+				<NextAuthProvider>
+					<div className="min-h-screen flex flex-col">
+						<Header />
+						<main className="pt-16 flex-grow">
+							{children}
+						</main>
+						<Footer />
+					</div>
+				</NextAuthProvider>
 			</body>
 		</html>
 	);
