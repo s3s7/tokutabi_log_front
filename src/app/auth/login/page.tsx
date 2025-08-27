@@ -2,19 +2,17 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const handleGoogleSignIn = async () => {
     try {
       setIsSigningIn(true);
       await signIn('google', { 
-        callbackUrl: callbackUrl,
+        callbackUrl: '/auth/callback',
         redirect: true
       });
     } catch (error) {

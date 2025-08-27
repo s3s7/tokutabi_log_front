@@ -41,6 +41,7 @@ import { Metadata } from 'next';
 import NextAuthProvider from '@/providers/NextAuth';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import { ToastProvider } from './context/ToastContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -65,13 +66,15 @@ export default function RootLayout({
 			</head>
 			<body className={inter.className}>
 				<NextAuthProvider>
-					<div className="min-h-screen flex flex-col">
-						<Header />
-						<main className="pt-16 flex-grow">
-							{children}
-						</main>
-						<Footer />
-					</div>
+					<ToastProvider>
+						<div className="min-h-screen flex flex-col">
+							<Header />
+							<main className="pt-16 flex-grow">
+								{children}
+							</main>
+							<Footer />
+						</div>
+					</ToastProvider>
 				</NextAuthProvider>
 			</body>
 		</html>
