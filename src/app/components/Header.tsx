@@ -47,7 +47,7 @@ export default function Header() {
                   <Link href="/travel-record/new" className="block px-4 py-2 text-gray-800 hover:bg-gray-100" onClick={closeMenu}>
                     旅行記録を追加
                   </Link>
-                  <Link href="/companions/new" className="block px-4 py-2 text-gray-800 hover:bg-gray-100" onClick={closeMenu}>
+                  <Link href="/tripPeople/new" className="block px-4 py-2 text-gray-800 hover:bg-gray-100" onClick={closeMenu}>
                     同行者を追加
                   </Link>
                   
@@ -87,7 +87,7 @@ export default function Header() {
                 みんなの旅行記録
               </Link>
               {status === 'authenticated' && (
-                <Link href="/companions" className="block px-4 py-2 text-gray-800 hover:bg-gray-100" onClick={closeMenu}>
+                <Link href="/tripPeople" className="block px-4 py-2 text-gray-800 hover:bg-gray-100" onClick={closeMenu}>
                   同行者一覧
                 </Link>
               )}
