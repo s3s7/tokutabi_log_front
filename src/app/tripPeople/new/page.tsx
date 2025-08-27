@@ -12,11 +12,13 @@ import {
   AVATAR_CONFIG, 
   TRIP_PERSON_VALIDATION_MESSAGES 
 } from '@/constants/tripPeople';
+import { useToastContext } from '@/app/context/ToastContext';
 
 export default function NewTripPersonPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showSuccess, showError } = useToastContext();
   
   const [formData, setFormData] = useState<TripPersonFormData>({
     name: '',
@@ -62,13 +64,17 @@ export default function NewTripPersonPage() {
     if (file) {
       // ファイルサイズチェック
       if (file.size > AVATAR_CONFIG.MAX_FILE_SIZE) {
-        setErrors(prev => ({ ...prev, avatar: TRIP_PERSON_VALIDATION_MESSAGES.AVATAR_FILE_SIZE }));
+        const errorMessage = TRIP_PERSON_VALIDATION_MESSAGES.AVATAR_FILE_SIZE;
+        setErrors(prev => ({ ...prev, avatar: errorMessage }));
+        showError(errorMessage);
         return;
       }
       
       // ファイル形式チェック
       if (!AVATAR_CONFIG.ACCEPTED_FORMATS.includes(file.type as any)) {
-        setErrors(prev => ({ ...prev, avatar: TRIP_PERSON_VALIDATION_MESSAGES.AVATAR_FILE_FORMAT }));
+        const errorMessage = TRIP_PERSON_VALIDATION_MESSAGES.AVATAR_FILE_FORMAT;
+        setErrors(prev => ({ ...prev, avatar: errorMessage }));
+        showError(errorMessage);
         return;
       }
       
@@ -122,7 +128,15 @@ export default function NewTripPersonPage() {
     }
     
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    
+    // バリデーションエラーがある場合、最初のエラーをトーストで表示
+    const errorKeys = Object.keys(newErrors);
+    if (errorKeys.length > 0) {
+      const firstErrorMessage = newErrors[errorKeys[0]];
+      showError(firstErrorMessage);
+    }
+    
+    return errorKeys.length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -149,7 +163,9 @@ export default function NewTripPersonPage() {
       // 暫定的な成功シミュレーション
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setSuccessMessage('旅行相手を登録しました！');
+      const successMessage = '旅行相手を登録しました！';
+      setSuccessMessage(successMessage);
+      showSuccess(successMessage);
       
       // 3秒後に一覧ページに遷移
       setTimeout(() => {
@@ -158,7 +174,9 @@ export default function NewTripPersonPage() {
       
     } catch (error) {
       console.error('Registration error:', error);
-      setErrors({ form: TRIP_PERSON_VALIDATION_MESSAGES.FORM_ERROR });
+      const errorMessage = TRIP_PERSON_VALIDATION_MESSAGES.FORM_ERROR;
+      setErrors({ form: errorMessage });
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
