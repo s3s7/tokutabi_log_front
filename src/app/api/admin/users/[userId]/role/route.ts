@@ -4,15 +4,10 @@ import axios from 'axios';
 
 const serverApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-interface RouteParams {
-  params: {
-    userId: string;
-  };
-}
-
+// ✅ RouteParamsインターフェースを削除し、インライン型定義を使用
 export async function PATCH(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { userId: string } } // ← ここを修正
 ) {
   try {
     // セッション確認
