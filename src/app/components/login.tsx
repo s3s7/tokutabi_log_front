@@ -2,7 +2,7 @@ import React from 'react';
 import { useSession, signIn } from 'next-auth/react';
 
 export default function Login() {
-	const { data: session, status } = useSession();
+	const { status } = useSession();
 
 	if (status === 'loading') {
 		return <div>Loading...</div>;

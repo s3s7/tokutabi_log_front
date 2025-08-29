@@ -2,7 +2,10 @@ export type TripPerson = {
   id?: number;
   name: string;
   relationship_id: number;
+  relationship_name?: string;
   birthday?: string;
+  age?: number;
+  display_age?: string;
   likes?: string;
   dislikes?: string;
   address?: string;
@@ -20,7 +23,6 @@ export type TripPersonFormData = {
   dislikes: string;
   address: string;
   memo: string;
-  avatar: File | null;
 };
 
 export type TripPersonResponse = {

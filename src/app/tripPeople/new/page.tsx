@@ -1,23 +1,20 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import type { TripPersonFormData, TripPersonValidationErrors } from '@/types/tripPeople';
 import { RELATIONSHIPS } from '@/constants/relationship';
 import { 
   TRIP_PERSON_FORM_LIMITS, 
-  AVATAR_CONFIG, 
   TRIP_PERSON_VALIDATION_MESSAGES 
 } from '@/constants/tripPeople';
 import { useToastContext } from '@/app/context/ToastContext';
 
 export default function NewTripPersonPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { showSuccess, showError } = useToastContext();
   
   const [formData, setFormData] = useState<TripPersonFormData>({
@@ -28,10 +25,7 @@ export default function NewTripPersonPage() {
     dislikes: '',
     address: '',
     memo: '',
-    avatar: null,
   });
-  
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<TripPersonValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -59,44 +53,6 @@ export default function NewTripPersonPage() {
     }
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // ファイルサイズチェック
-      if (file.size > AVATAR_CONFIG.MAX_FILE_SIZE) {
-        const errorMessage = TRIP_PERSON_VALIDATION_MESSAGES.AVATAR_FILE_SIZE;
-        setErrors(prev => ({ ...prev, avatar: errorMessage }));
-        showError(errorMessage);
-        return;
-      }
-      
-      // ファイル形式チェック
-      if (!AVATAR_CONFIG.ACCEPTED_FORMATS.includes(file.type as any)) {
-        const errorMessage = TRIP_PERSON_VALIDATION_MESSAGES.AVATAR_FILE_FORMAT;
-        setErrors(prev => ({ ...prev, avatar: errorMessage }));
-        showError(errorMessage);
-        return;
-      }
-      
-      setFormData(prev => ({ ...prev, avatar: file }));
-      setErrors(prev => ({ ...prev, avatar: '' }));
-      
-      // プレビュー表示
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const resetAvatar = () => {
-    setFormData(prev => ({ ...prev, avatar: null }));
-    setAvatarPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
 
   const validateForm = (): boolean => {
     const newErrors: TripPersonValidationErrors = {};
@@ -150,27 +106,53 @@ export default function NewTripPersonPage() {
     setErrors({});
     
     try {
-      // TODO: バックエンドAPIが実装されたら、実際のAPI呼び出しを行う
-      // const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      // const formDataToSend = new FormData();
-      // Object.entries(formData).forEach(([key, value]) => {
-      //   if (value !== null && value !== '') {
-      //     formDataToSend.append(key, value);
-      //   }
-      // });
-      // const response = await axios.post(`${apiUrl}/api/v1/trip_people`, formDataToSend);
+      // 実際のAPI呼び出し
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       
-      // 暫定的な成功シミュレーション
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const successMessage = '旅行相手を登録しました！';
-      setSuccessMessage(successMessage);
-      showSuccess(successMessage);
-      
-      // 3秒後に一覧ページに遷移
-      setTimeout(() => {
-        router.push('/tripPeople');
-      }, 3000);
+      // JSONデータとして送信
+      const requestData = {
+        name: formData.name,
+        relationship_id: parseInt(formData.relationship_id),
+        birthday: formData.birthday || null,
+        likes: formData.likes || null,
+        dislikes: formData.dislikes || null,
+        address: formData.address || null,
+        memo: formData.memo || null
+      };
+
+      const response = await fetch(`${apiUrl}/api/v1/trip_people`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Provider': 'google', // TODO: 実際の認証情報に置き換え
+          'X-Auth-UID': 'dev_admin_user', // TODO: 実際の認証情報に置き換え
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        const successMessage = result.message || '旅行相手を登録しました！';
+        setSuccessMessage(successMessage);
+        showSuccess(successMessage);
+        
+        // 3秒後に一覧ページに遷移
+        setTimeout(() => {
+          router.push('/tripPeople');
+        }, 3000);
+      } else {
+        // APIエラーの場合
+        const errorMessage = result.error || 'エラーが発生しました';
+        setErrors({ form: errorMessage });
+        showError(errorMessage);
+        
+        // バリデーションエラーの詳細がある場合
+        if (result.details && Array.isArray(result.details)) {
+          console.error('Validation errors:', result.details);
+          showError(`エラー: ${result.details.join(', ')}`);
+        }
+      }
       
     } catch (error) {
       console.error('Registration error:', error);
@@ -290,74 +272,6 @@ export default function NewTripPersonPage() {
                   )}
                 </div>
 
-                {/* プロフィール画像 */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <svg className="w-4 h-4 inline mr-1 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    プロフィール画像
-                  </label>
-                  
-                  <div className="flex items-start gap-5">
-                    {/* 画像プレビュー */}
-                    <div className="relative">
-                      <div className="w-20 h-20 border-2 border-gray-200 rounded-full overflow-hidden bg-gray-50 flex items-center justify-center">
-                        {avatarPreview ? (
-                          <Image
-                            src={avatarPreview}
-                            alt="プレビュー"
-                            width={80}
-                            height={80}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleAvatarChange}
-                        accept={AVATAR_CONFIG.ACCEPTED_FORMATS.join(',')}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      
-                      {avatarPreview && (
-                        <button
-                          type="button"
-                          onClick={resetAvatar}
-                          className="mt-2 text-sm text-gray-600 hover:text-gray-800"
-                        >
-                          <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          選択をリセット
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <p className="mt-1 text-xs text-gray-500">
-                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {AVATAR_CONFIG.ACCEPTED_FORMATS_TEXT}形式のファイルをアップロードできます（最大{AVATAR_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB、任意）
-                  </p>
-                  {errors.avatar && (
-                    <p className="mt-1 text-xs text-red-600">
-                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L1.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                      {errors.avatar}
-                    </p>
-                  )}
-                </div>
 
                 {/* 関係性 */}
                 <div className="mb-6">

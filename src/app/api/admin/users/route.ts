@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const serverApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // セッション確認
     const session = await getServerSession();
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 管理者権限確認（セッションにroleが含まれていることを想定）
-    if (session.user.role !== 'admin') {
+    if (session.user.role !== 2) { // 2: admin
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
