@@ -22,7 +22,7 @@ export async function PATCH(
     }
 
     // 管理者権限確認
-    if (session.user.role !== 'admin') {
+    if (session.user.role !== 2) { // 2: admin
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

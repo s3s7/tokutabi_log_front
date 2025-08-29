@@ -1,9 +1,10 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface UserData {
   id: number;
@@ -25,27 +26,7 @@ export default function MyPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-      return;
-    }
-
-    if (status === 'authenticated' && session?.user) {
-      fetchUserData();
-    }
-  }, [session, status, router]);
-
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       if (!session?.user?.id) {
         setError('ユーザーIDが取得できません');
@@ -75,7 +56,27 @@ export default function MyPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/');
+      return;
+    }
+
+    if (status === 'authenticated' && session?.user) {
+      fetchUserData();
+    }
+  }, [session, status, router, fetchUserData]);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const startEditing = () => {
     if (userData) {
@@ -186,10 +187,12 @@ export default function MyPage() {
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center space-x-6">
               {session.user?.image && (
-                <img
+                <Image
                   className="h-20 w-20 rounded-full"
                   src={session.user.image}
                   alt={userData.name}
+                  width={80}
+                  height={80}
                 />
               )}
               <div>
