@@ -4,7 +4,8 @@ import axios from 'axios';
 
 const serverApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-export async function GET(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function GET(_request: NextRequest) {
   try {
     // セッション確認
     const session = await getServerSession();
@@ -12,15 +13,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 拡張されたセッションユーザーの型アサーション
+    const user = session.user as { id: string; role: number };
+
     // 管理者権限確認（セッションにroleが含まれていることを想定）
-    if (session.user.role !== 'admin') {
+    if (user.role !== 2) { // 2: admin
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     // バックエンドからユーザー一覧を取得
     const response = await axios.get(`${serverApiUrl}/api/v1/admin/users`, {
       headers: {
-        'Authorization': `Bearer ${session.user.id}`,
+        'Authorization': `Bearer ${user.id}`,
       },
     });
 

@@ -7,7 +7,7 @@ export const useAuth = () => {
 
   const isAuthenticated = status === 'authenticated';
   const isLoading = status === 'loading';
-  const isAdmin = session?.user?.role === 'admin';
+  const isAdmin = session?.user?.role === 2; // 2: admin
 
   return {
     session,

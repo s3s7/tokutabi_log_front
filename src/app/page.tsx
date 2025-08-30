@@ -1,12 +1,11 @@
 'use client';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToastContext } from './context/ToastContext';
 
-export default function Home() {
-	const { status } = useSession();
+function LoginSuccessHandler() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { showSuccess } = useToastContext();
@@ -22,8 +21,17 @@ export default function Home() {
 		}
 	}, [searchParams, showSuccess, router]);
 
+	return null;
+}
+
+export default function Home() {
+	const { status } = useSession();
+
 	return (
 		<div className="bg-gray-50">
+			<Suspense fallback={null}>
+				<LoginSuccessHandler />
+			</Suspense>
 			<div className="max-w-4xl mx-auto px-4 py-8">
 				{/* ヒーローセクション */}
 				<div className="w-full text-center py-16 bg-gradient-to-r rounded-lg mb-12">

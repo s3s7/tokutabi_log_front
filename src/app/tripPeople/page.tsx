@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { TripPerson } from '@/types/tripPeople';
@@ -10,48 +9,79 @@ import { RELATIONSHIPS } from '@/constants/relationship';
 import { SORT_OPTIONS, SORT_ORDER_OPTIONS } from '@/constants/sort';
 import { useToastContext } from '@/app/context/ToastContext';
 import { filterTripPeople, hasActiveFilters, createEmptyFilterState } from '@/lib/tripFilter';
+import { useAuthGuard } from '@/app/hooks/useAuthGuard';
 
 export default function TripPeoplePage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const { showError } = useToastContext();
+  
+  // useAuthGuardを使用した認証ガード
+  const {
+    isAuthenticated,
+    user,
+    renderGuard
+  } = useAuthGuard({
+    redirectTo: '/auth/login',
+    loadingMessage: '認証情報を確認中...',
+    loadingSize: 'md',
+    requiredRole: 1, // 一般ユーザー(1)以上のアクセス権限が必要
+    onAuthError: (error) => {
+      console.error('認証エラー:', error);
+      showError(error.message);
+    },
+    onUnauthorized: () => {
+      showError('ログインが必要です');
+    }
+  });
 
   const [tripPeople, setTripPeople] = useState<TripPerson[]>([]);
   const [filteredPeople, setFilteredPeople] = useState<TripPerson[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
   const [filters, setFilters] = useState<FilterState>(createEmptyFilterState());
 
   // 旅行相手データを取得
   useEffect(() => {
     const fetchTripPeople = async () => {
-      try {
-        setIsLoading(true);
-        
-        // TODO: バックエンドAPIが実装されたら実際のAPI呼び出しを行う
-        // const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        // const response = await axios.get(`${apiUrl}/api/v1/trip_people`, {
-        //   headers: {
-        //     Authorization: `Bearer ${session?.accessToken}`
-        //   }
-        // });
-        // setTripPeople(response.data.trip_people || []);
+      if (!isAuthenticated || !user) {
+        return;
+      }
 
-        // 暫定的に空配列を設定（実際のAPI実装まで）
-        setTripPeople([]);
+      try {
+        setDataLoading(true);
+        
+        // 実際のAPI呼び出し
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        
+        const response = await fetch(`${apiUrl}/api/v1/trip_people`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Provider': 'google',
+            'X-Auth-UID': user.id || user.email || '',
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setTripPeople(result.trip_people || []);
+        } else {
+          const result = await response.json();
+          console.error('API Error:', result.error);
+          showError(result.error || '旅行相手データの取得に失敗しました');
+          setTripPeople([]);
+        }
         
       } catch (error) {
         console.error('旅行相手データの取得に失敗しました:', error);
         showError('旅行相手データの取得に失敗しました');
         setTripPeople([]);
       } finally {
-        setIsLoading(false);
+        setDataLoading(false);
       }
     };
 
-    if (status === 'authenticated') {
-      fetchTripPeople();
-    }
-  }, [status, showError]);
+    fetchTripPeople();
+  }, [isAuthenticated, user, showError]);
 
   // フィルター適用
   useEffect(() => {
@@ -101,26 +131,27 @@ export default function TripPeoplePage() {
 
   const activeFilters = hasActiveFilters(filters);
 
-  // 認証チェックと読み込み状態のハンドリング
-  if (status === 'loading' || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <span className="text-lg">読み込み中...</span>
-        </div>
-      </div>
-    );
+  // 認証ガード - 認証が必要な場合はローディング画面やリダイレクトを自動処理
+  const guardElement = renderGuard();
+  if (guardElement) {
+    return guardElement;
   }
 
-  if (status === 'unauthenticated') {
-    router.push('/auth/login');
+  // データ読み込み中の場合
+  if (dataLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">ログイン画面に移動しています...</div>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center py-16">
+            <div className="flex items-center space-x-2">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-lg">旅行相手データを読み込み中...</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -170,7 +201,7 @@ export default function TripPeoplePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">関係性</label>
               <select
                 value={filters.relationshipId}
-                onChange={(e) => handleFilterChange('relationshipId', e.target.value)}
+                onChange={(e) => handleRelationshipChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">すべて</option>
@@ -187,7 +218,7 @@ export default function TripPeoplePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">並び替え</label>
               <select
                 value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                onChange={(e) => handleSortByChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {SORT_OPTIONS.map(option => (
@@ -203,7 +234,7 @@ export default function TripPeoplePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">順序</label>
               <select
                 value={filters.sortOrder}
-                onChange={(e) => handleFilterChange('sortOrder', e.target.value as 'asc' | 'desc')}
+                onChange={(e) => handleSortOrderChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={!filters.sortBy}
               >
