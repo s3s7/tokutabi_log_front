@@ -2,7 +2,7 @@
 import React from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import Loading from '@/app/components/ui/Loading';
 import type { 
   UseAuthGuardOptions, 
@@ -130,15 +130,27 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardState 
     return true;
   }, [isAuthenticated, hasRequiredRole, isEmailVerified]);
 
+  // エラー処理状態の管理
+  const [processedError, setProcessedError] = useState<string | null>(null);
+
   // 認証状態変化時のリダイレクト処理
   useEffect(() => {
+    const errorKey = `${isUnauthenticated}-${isAuthenticated}-${hasRequiredRole}-${isEmailVerified}`;
+    
+    // 同じエラー状態を既に処理している場合はスキップ
+    if (processedError === errorKey) {
+      return;
+    }
+
     if (isUnauthenticated) {
+      setProcessedError(errorKey);
       onUnauthorized?.();
       router.push(redirectTo);
       return;
     }
 
     if (isAuthenticated && !hasRequiredRole) {
+      setProcessedError(errorKey);
       const roleError: AuthError = {
         type: 'FORBIDDEN',
         message: '必要な権限がありません',
@@ -153,6 +165,7 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardState 
     }
 
     if (isAuthenticated && !isEmailVerified) {
+      setProcessedError(errorKey);
       const verificationError: AuthError = {
         type: 'FORBIDDEN',
         message: 'メールアドレスの認証が必要です',
@@ -164,11 +177,17 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardState 
       router.push('/auth/verify-email');
       return;
     }
+
+    // すべての条件をクリアした場合、処理済みエラーをリセット
+    if (isAuthenticated && hasRequiredRole && isEmailVerified) {
+      setProcessedError(null);
+    }
   }, [
     isUnauthenticated, 
     isAuthenticated, 
     hasRequiredRole, 
     isEmailVerified,
+    processedError,
     onUnauthorized, 
     onAuthError,
     router, 
@@ -177,12 +196,7 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardState 
     user?.role
   ]);
 
-  // エラー発生時のコールバック実行
-  useEffect(() => {
-    if (error && onAuthError) {
-      onAuthError(error);
-    }
-  }, [error, onAuthError]);
+  // エラー発生時のコールバック実行（重複処理を防ぐため、メイン useEffect で処理）
 
   // 自動セッションリフレッシュ
   useEffect(() => {

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { TripPersonFormData, TripPersonValidationErrors } from '@/types/tripPeople';
@@ -11,11 +10,40 @@ import {
   TRIP_PERSON_VALIDATION_MESSAGES 
 } from '@/constants/tripPeople';
 import { useToastContext } from '@/app/context/ToastContext';
+import { useAuthGuard } from '@/app/hooks/useAuthGuard';
 
 export default function NewTripPersonPage() {
-  const { status } = useSession();
   const router = useRouter();
   const { showSuccess, showError } = useToastContext();
+
+  // メモ化されたコールバック関数
+  const handleAuthError = useCallback((error: any) => {
+    console.error('認証エラー:', {
+      type: error.type,
+      message: error.message,
+      status: error.status,
+      details: error.details
+    });
+    showError(error.message || '認証エラーが発生しました');
+  }, [showError]);
+
+  const handleUnauthorized = useCallback(() => {
+    showError('ログインが必要です');
+  }, [showError]);
+
+  // useAuthGuardを使用した認証ガード
+  const {
+    isAuthenticated,
+    user,
+    renderGuard
+  } = useAuthGuard({
+    redirectTo: '/auth/login',
+    loadingMessage: '新規作成画面を読み込み中...',
+    loadingSize: 'md',
+    requiredRole: 1, // 一般ユーザー(1)以上のアクセス権限が必要
+    onAuthError: handleAuthError,
+    onUnauthorized: handleUnauthorized
+  });
   
   const [formData, setFormData] = useState<TripPersonFormData>({
     name: '',
@@ -30,18 +58,10 @@ export default function NewTripPersonPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // 認証チェック
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">読み込み中...</div>
-      </div>
-    );
-  }
-
-  if (status === 'unauthenticated') {
-    router.push('/auth/login');
-    return null;
+  // 認証ガード - 認証が必要な場合はローディング画面やリダイレクトを自動処理
+  const guardElement = renderGuard();
+  if (guardElement) {
+    return guardElement;
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -101,6 +121,11 @@ export default function NewTripPersonPage() {
     if (!validateForm()) {
       return;
     }
+
+    if (!isAuthenticated || !user) {
+      showError('認証エラーが発生しました');
+      return;
+    }
     
     setIsLoading(true);
     setErrors({});
@@ -124,8 +149,8 @@ export default function NewTripPersonPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Auth-Provider': 'google', // TODO: 実際の認証情報に置き換え
-          'X-Auth-UID': 'dev_admin_user', // TODO: 実際の認証情報に置き換え
+          'X-Auth-Provider': 'google',
+          'X-Auth-UID': user.id || user.email || '',
         },
         body: JSON.stringify(requestData)
       });
