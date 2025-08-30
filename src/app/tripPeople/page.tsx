@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { TripPerson } from '@/types/tripPeople';
@@ -15,6 +15,21 @@ export default function TripPeoplePage() {
   const router = useRouter();
   const { showError } = useToastContext();
   
+  // メモ化されたコールバック関数
+  const handleAuthError = useCallback((error: any) => {
+    console.error('認証エラー:', {
+      type: error.type,
+      message: error.message,
+      status: error.status,
+      details: error.details
+    });
+    showError(error.message || '認証エラーが発生しました');
+  }, [showError]);
+
+  const handleUnauthorized = useCallback(() => {
+    showError('ログインが必要です');
+  }, [showError]);
+
   // useAuthGuardを使用した認証ガード
   const {
     isAuthenticated,
@@ -25,13 +40,8 @@ export default function TripPeoplePage() {
     loadingMessage: '認証情報を確認中...',
     loadingSize: 'md',
     requiredRole: 1, // 一般ユーザー(1)以上のアクセス権限が必要
-    onAuthError: (error) => {
-      console.error('認証エラー:', error);
-      showError(error.message);
-    },
-    onUnauthorized: () => {
-      showError('ログインが必要です');
-    }
+    onAuthError: handleAuthError,
+    onUnauthorized: handleUnauthorized
   });
 
   const [tripPeople, setTripPeople] = useState<TripPerson[]>([]);
